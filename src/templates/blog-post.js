@@ -1,4 +1,5 @@
 import React from "react"
+import Helmet from 'react-helmet'
 import { Link, graphql } from "gatsby"
 
 import Bio from "../components/bio"
@@ -6,14 +7,72 @@ import Layout from "../components/layout"
 import SEO from "../components/seo"
 import { rhythm, scale } from "../utils/typography"
 
+function waitForGlobal(name, timeout = 300) {
+  return new Promise((resolve, reject) => {
+    let waited = 0
+
+    function wait(interval) {
+      setTimeout(() => {
+        waited += interval
+        // some logic to check if script is loaded
+        // usually it something global in window object
+        if (window[name] !== undefined) {
+          return resolve()
+        }
+        if (waited >= timeout * 1000) {
+          return reject({ message: 'Timeout' })
+        }
+        wait(interval * 2)
+      }, interval)
+    }
+
+    wait(30)
+  })
+}
+
 class BlogPostTemplate extends React.Component {
+  componentDidMount() {
+    waitForGlobal('MathJax').then(() => {
+
+      window.top.MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['[', ']']],
+          processEscapes: true,
+          processEnvironments: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+          TeX: {
+            equationNumbers: { autoNumber: 'AMS' },
+            extensions: ['AMSmath.js', 'AMSsymbols.js'],
+          },
+        },
+      })
+    })
+    if (window.top.MathJax != null) {
+      window.top.MathJax.Hub.Queue(['Typeset', window.top.MathJax.Hub])
+    }
+  }
+
   render() {
     const post = this.props.data.markdownRemark
     const siteTitle = this.props.data.site.siteMetadata.title
+    const siteDescription = post.excerpt
     const { previous, next } = this.props.pageContext
+    const { classes } = this.props;
 
     return (
       <Layout location={this.props.location} title={siteTitle}>
+        <Helmet
+            htmlAttributes={{ lang: 'en' }}
+            meta={[{ name: 'description', content: siteDescription }]}
+            title={`${post.frontmatter.title} | ${siteTitle}`}
+        >
+          <script
+              type="text/javascript"
+              src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+              async
+          />
+        </Helmet>
         <SEO
           title={post.frontmatter.title}
           description={post.frontmatter.description || post.excerpt}
@@ -22,7 +81,7 @@ class BlogPostTemplate extends React.Component {
           <header>
             <h1
               style={{
-                marginTop: rhythm(1),
+                margintop: rhythm(1),
                 marginBottom: 0,
               }}
             >
@@ -77,6 +136,12 @@ class BlogPostTemplate extends React.Component {
         </nav>
       </Layout>
     )
+  }
+
+  componentDidUpdate() {
+    if (window.top.MathJax != null) {
+      window.top.MathJax.Hub.Queue(['Typeset', window.top.MathJax.Hub])
+    }
   }
 }
 
